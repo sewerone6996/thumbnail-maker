@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meme & Thumbnail Maker</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+
+        :root {
+            --bg: #121212;
+            --panel: #1e1e1e;
+            --border: #333;
+            --text: #e0e0e0;
+            --accent: #ff0055;
+            --tg-color: #2AABEE;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* --- ЛЕВАЯ ПАНЕЛЬ --- */
+        .toolbar {
+            width: 320px;
+            background: var(--panel);
+            border-right: 1px solid var(--border);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+
+        .toolbar h2 { font-size: 18px; color: #fff; margin-bottom: 5px; }
+        
+        .control-group { display: flex; flex-direction: column; gap: 5px; }
+        .control-group label { font-size: 13px; color: #888; }
+        
+        input[type="text"], select, input[type="number"] {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            padding: 10px;
+            border-radius: 6px;
+            color: white;
+            outline: none;
+            font-size: 14px;
+        }
+        input[type="text"]:focus, select:focus { border-color: var(--accent); }
+
+        input[type="range"] { width: 100%; cursor: pointer; }
+        
+        input[type="color"] {
+            width: 100%;
+            height: 40px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            background: transparent;
+        }
+
+        .btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+            text-align: center;
+            display: block;
+            width: 100%;
+            text-decoration: none;
+        }
+        .btn:hover { background: #ff3377; }
+        .btn.secondary { background: var(--border); color: #ddd; }
+        .btn.secondary:hover { background: #444; }
+
+        /* --- БЛОК ССЫЛОК --- */
+        .links-box {
+            margin-top: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 15px;
+        }
+        .links-box p {
+            font-size: 12px;
+            color: #888;
+            text-align: center;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Кнопка ТГ */
+        .tg-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: rgba(42, 171, 238, 0.1);
+            color: var(--tg-color);
+            border: 1px solid var(--tg-color);
+            padding: 10px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+            transition: 0.2s;
+        }
+        .tg-btn:hover { background: var(--tg-color); color: white; box-shadow: 0 0 10px rgba(42, 171, 238, 0.5); }
+
+        /* Кнопка Доната */
+        .donate-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: rgba(255, 0, 85, 0.1);
+            color: var(--accent);
+            border: 1px solid var(--accent);
+            padding: 10px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+            transition: 0.2s;
+        }
+        .donate-btn:hover { background: var(--accent); color: white; box-shadow: 0 0 10px rgba(255, 0, 85, 0.5); }
+
+        /* --- ПРАВАЯ ПАНЕЛЬ (Холст) --- */
+        .canvas-area {
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #000;
+            position: relative;
+            overflow: hidden;
+            padding: 20px;
+        }
+
+        .canvas-wrapper {
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            background: #222;
+            max-width: 100%;
+            max-height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        canvas {
+            display: block;
+            max-width: 100%;
+            max-height: 85vh;
+            object-fit: contain;
+        }
+
+        #imageLoader { display: none; }
+
+        .drag-hint {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            color: #fff;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 13px;
+            pointer-events: none;
+            transition: opacity 0.5s;
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- ПАНЕЛЬ УПРАВЛЕНИЯ -->
+    <div class="toolbar">
+        <h2>Редактор Превью</h2>
+        
+        <button class="btn secondary" onclick="document.getElementById('imageLoader').click()">Загрузить картинку</button>
+        <input type="file" id="imageLoader" accept="image/*">
+        
+        <div class="control-group">
+            <label>Текст на картинке</label>
+            <input type="text" id="textInput" value="ЭТО ТОП" oninput="draw()">
+        </div>
+
+        <div class="control-group">
+            <label>Шрифт</label>
+            <select id="fontFamily" onchange="draw()">
+                <option value="Impact">Impact (Кликбейт)</option>
+                <option value="Arial Black">Arial Black (Жирный)</option>
+                <option value="Verdana">Verdana</option>
+                <option value="Courier New">Courier New</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label>Размер текста: <span id="sizeVal">70</span>px</label>
+            <input type="range" id="fontSize" min="20" max="150" value="70" oninput="document.getElementById('sizeVal').innerText=this.value; draw()">
+        </div>
+
+        <div class="control-group">
+            <label>Цвет текста</label>
+            <input type="color" id="textColor" value="#ffffff" oninput="draw()">
+        </div>
+
+        <div class="control-group">
+            <label>Обводка (Цвет)</label>
+            <input type="color" id="strokeColor" value="#000000" oninput="draw()">
+        </div>
+
+        <div class="control-group">
+            <label>Позиция текста (Y)</label>
+            <input type="range" id="textY" min="0" max="100" value="80" oninput="draw()">
+        </div>
+
+        <hr style="border-color: var(--border); margin: 5px 0;">
+        
+        <!-- Кнопка скачивания -->
+        <button class="btn" onclick="downloadImage()">Скачать превью (PNG)</button>
+        <button class="btn secondary" onclick="resetCanvas()">Сбросить</button>
+        
+        <!-- БЛОК ССЫЛОК -->
+        <div class="links-box">
+            <p>Связь с автором</p>
+            <!-- Кнопка Telegram -->
+            <a href="https://t.me/burmaldance6996" target="_blank" class="tg-btn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M11.944 0A12 12 0 1 0 24 12A12 12 0 0 0 11.944 0ZM17.65 8.154a.615.615 0 0 1 .163.055.538.538 0 0 1 .3.58c-.212 1.514-1.09 5.192-1.53 7.246-.195.923-.545 1.05-.9 1.05a3.2 3.2 0 0 1-1.6-.6c-.782-.526-1.7-1.094-2.43-1.6-1.125-.8-.5-1.25.2-1.95.15-.15 2.15-2.1 2.5-2.45.1-.1.15-.2.1-.3s-.2-.1-.3-.05L9.3 11.7c-.6.3-1.1.45-1.65.2l-1.05-.35c-.6-.2-.6-.6.15-.9l13-5c.15-.05.3-.1.45-.1Z"/>
+                </svg>
+                Мой Telegram
+            </a>
+            <!-- Кнопка DonationAlerts -->
+            <a href="https://www.donationalerts.com/r/burmald" target="_blank" class="donate-btn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                </svg>
+                Поддержать сайт
+            </a>
+        </div>
+    </div>
+
+    <!-- ХОЛСТ -->
+    <div class="canvas-area">
+        <div class="canvas-wrapper">
+            <canvas id="canvas" width="1280" height="720"></canvas>
+            <div class="drag-hint" id="hint" style="opacity: 0;">Картинка загружена!</div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const imageLoader = document.getElementById('imageLoader');
+        const hint = document.getElementById('hint');
+
+        let backgroundImage = null;
+
+        function drawPlaceholder() {
+            const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+            gradient.addColorStop(0, '#1a0b2e');
+            gradient.addColorStop(1, '#0f111a');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+            ctx.lineWidth = 2;
+            for (let i = 0; i < canvas.width; i += 40) {
+                ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke();
+            }
+            for (let i = 0; i < canvas.height; i += 40) {
+                ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke();
+            }
+
+            ctx.fillStyle = 'rgba(255,255,255,0.1)';
+            ctx.font = 'bold 40px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('ЗАГРУЗИ КАРТИНКУ', canvas.width / 2, canvas.height / 2);
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (backgroundImage) {
+                const imgRatio = backgroundImage.width / backgroundImage.height;
+                const canvasRatio = canvas.width / canvas.height;
+                let dw, dh, ox, oy;
+
+                if (imgRatio > canvasRatio) {
+                    dh = canvas.height;
+                    dw = backgroundImage.width * (canvas.height / backgroundImage.height);
+                    ox = (canvas.width - dw) / 2;
+                    oy = 0;
+                } else {
+                    dw = canvas.width;
+                    dh = backgroundImage.height * (canvas.width / backgroundImage.width);
+                    ox = 0;
+                    oy = (canvas.height - dh) / 2;
+                }
+                ctx.drawImage(backgroundImage, ox, oy, dw, dh);
+            } else {
+                drawPlaceholder();
+            }
+
+            const text = document.getElementById('textInput').value.toUpperCase();
+            const fontFamily = document.getElementById('fontFamily').value;
+            const fontSize = document.getElementById('fontSize').value;
+            const textColor = document.getElementById('textColor').value;
+            const strokeColor = document.getElementById('strokeColor').value;
+            const textYPercent = document.getElementById('textY').value;
+
+            if (!text) return;
+
+            ctx.font = `900 ${fontSize}px "${fontFamily}", sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            const textY = (canvas.height / 100) * textYPercent;
+
+            ctx.strokeStyle = strokeColor;
+            ctx.lineWidth = fontSize / 5; 
+            ctx.lineJoin = "round";
+            ctx.strokeText(text, canvas.width / 2, textY);
+
+            ctx.fillStyle = textColor;
+            ctx.fillText(text, canvas.width / 2, textY);
+        }
+
+        imageLoader.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    backgroundImage = img;
+                    hint.style.opacity = '1';
+                    setTimeout(() => hint.style.opacity = '0', 2000);
+                    draw();
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        function downloadImage() {
+            const dataURL = canvas.toDataURL('image/png');
+            const link = document.createElement('a');
+            link.download = 'burmald_thumbnail.png';
+            link.href = dataURL;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function resetCanvas() {
+            backgroundImage = null;
+            document.getElementById('textInput').value = 'ЭТО ТОП';
+            document.getElementById('fontSize').value = 70;
+            document.getElementById('sizeVal').innerText = '70';
+            document.getElementById('textY').value = 80;
+            draw();
+        }
+
+        draw();
+
+    </script>
+</body>
+</html>
